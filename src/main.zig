@@ -42,7 +42,7 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
                 std.debug.print("cd: {s} No such file or directory\n", .{args_split.rest()});
             };
         } 
-    else {
+        else {
             std.debug.print("command: {s} is not found\n", .{arg});
         }
     }
@@ -82,10 +82,21 @@ fn clearCommand() !void {
 
 fn cdCommand(args: anytype) !void {
 
-    var dir = try std.fs.cwd().openDir(args.rest(), .{});
-    defer dir.close();
+    if (std.mem.eql(u8, args.rest(), "~") and std.mem.eql(u8, args.rest(), "")) {
+        const home_dir = std.posix.getenv("HOME") orelse {
+            std.debug.print("Error: Env not set\n", .{});
+            return;
+        };
+        var dir = try std.fs.cwd().openDir(home_dir, .{});
+        defer dir.close();
 
-    try dir.setAsCwd();
+        try dir.setAsCwd();
+    } else {
+        var dir = try std.fs.cwd().openDir(args.rest(), .{});
+        defer dir.close();
+
+        try dir.setAsCwd();
+    }
 }
 
 fn exitCommand() !void {
