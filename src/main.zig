@@ -35,6 +35,8 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
             try pwdCommand(allocator);
         } else if (std.mem.eql(u8, arg, "exit")) {
             try exitCommand();
+        } else if (std.mem.eql(u8, arg, "clear")) {
+            try clearCommand();
         }
     }
 }
@@ -64,6 +66,11 @@ fn pwdCommand(allocator: std.mem.Allocator) !void {
     defer allocator.free(current_directory);
 
     std.debug.print("{s}\n", .{current_directory});
+}
+
+fn clearCommand() !void {
+    const clear_screen = "\x1B[2J\x1B[H";
+    std.debug.print("{s}", .{clear_screen});
 }
 
 fn exitCommand() !void {
