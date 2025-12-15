@@ -37,6 +37,13 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
             try exitCommand();
         } else if (std.mem.eql(u8, arg, "clear")) {
             try clearCommand();
+        } else if (std.mem.eql(u8, arg, "cd")) {
+            cdCommand(args_split) catch {
+                std.debug.print("cd: {s} No such file or directory\n", .{args_split.rest()});
+            };
+        } 
+    else {
+            std.debug.print("command: {s} is not found\n", .{arg});
         }
     }
 }
@@ -71,6 +78,14 @@ fn pwdCommand(allocator: std.mem.Allocator) !void {
 fn clearCommand() !void {
     const clear_screen = "\x1B[2J\x1B[H";
     std.debug.print("{s}", .{clear_screen});
+}
+
+fn cdCommand(args: anytype) !void {
+
+    var dir = try std.fs.cwd().openDir(args.next(), .{});
+    defer dir.close();
+
+    try dir.close();
 }
 
 fn exitCommand() !void {
