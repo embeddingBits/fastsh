@@ -82,10 +82,10 @@ fn clearCommand() !void {
 
 fn cdCommand(args: anytype) !void {
 
-    var dir = try std.fs.cwd().openDir(args.next(), .{});
+    var dir = try std.fs.cwd().openDir(args.rest(), .{});
     defer dir.close();
 
-    try dir.close();
+    try dir.setAsCwd();
 }
 
 fn exitCommand() !void {
