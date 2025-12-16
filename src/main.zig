@@ -39,9 +39,11 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
     } else if (std.mem.eql(u8, command, "clear")) {
         try clearCommand();
     } else if (std.mem.eql(u8, command, "cd")) {
-        // Get the argument (if any), trim whitespace
+        // Trim whitespace
         const arg = std.mem.trim(u8, args_split.rest(), &std.ascii.whitespace);
         try cdCommand(arg);
+    } else if(std.mem.eql(u8, command, "dirs")) {
+        try dirsCommand();
     } else {
         std.debug.print("command: {s} is not found\n", .{command});
     }
@@ -88,11 +90,22 @@ fn cdCommand(target: []const u8) !void {
     else
         target;
 
-    // Use std.os.chdir — safe, simple, no fd issues
     std.posix.chdir(path) catch |err| {
         std.debug.print("cd: {s}: No such file or directory\n", .{path});
         return err;
     };
+}
+
+fn dirsCommand() !void {
+
+}
+
+fn falseCommand() !void {
+    return false;
+}
+
+fn trueCommand() !void {
+    return true;
 }
 
 fn exitCommand() !void {
