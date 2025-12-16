@@ -5,6 +5,10 @@ var dirStack = std.ArrayList([]const u8).init(std.heap.page_allocator);
 pub fn main() !void {
 
     while (true) {
+        {
+            const initCwd = try std.fs.cwd().realpathAlloc(std.heap.page_allocator, ".");
+            try dirStack.append(initCwd);
+        }
         // Allocator
         var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arena.deinit();
@@ -45,7 +49,7 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
         const arg = std.mem.trim(u8, args_split.rest(), &std.ascii.whitespace);
         try cdCommand(arg);
     } else if(std.mem.eql(u8, command, "dirs")) {
-        try dirsCommand();
+        try dirsCommand(allocator);
     } else {
         std.debug.print("command: {s} is not found\n", .{command});
     }
@@ -98,8 +102,19 @@ fn cdCommand(target: []const u8) !void {
     };
 }
 
-fn dirsCommand() !void {
+fn dirsCommand(allocator: std.mem.Allocator) !void {
+    _ = allocator;
 
+    if (dirStack.items.len == 0) {
+        std.debug.print("\n", .{});
+        return;
+    }
+
+    for (dirStack.items, 0..) |dir, i| {
+        if (i > 0) std.debug.print(" ", .{});
+        std.debug.print("{s}\n", .{dir});
+    }
+    std.debug.print("\n", .{});
 }
 
 fn falseCommand() !void {
