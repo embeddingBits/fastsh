@@ -1,5 +1,7 @@
 const std = @import("std");
 
+var dirStack = std.ArrayList([]const u8).init(std.heap.page_allocator);
+
 pub fn main() !void {
 
     while (true) {
