@@ -1,14 +1,14 @@
 const std = @import("std");
 
-var dirStack = std.ArrayList([]const u8).init(std.heap.page_allocator);
+var dirStack = std.ArrayListUnmanaged([]u8){};
+var lastStatus: u8 = 0; // For $? status
 
 pub fn main() !void {
 
+    const initCwd = try std.fs.cwd().realpathAlloc(std.heap.page_allocator, ".");
+    try dirStack.append(std.heap.page_allocator, initCwd);
+
     while (true) {
-        {
-            const initCwd = try std.fs.cwd().realpathAlloc(std.heap.page_allocator, ".");
-            try dirStack.append(initCwd);
-        }
         // Allocator
         var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arena.deinit();
@@ -44,6 +44,10 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
         try exitCommand();
     } else if (std.mem.eql(u8, command, "clear")) {
         try clearCommand();
+    } else if (std.mem.eql(u8, command, "true")) {
+        try trueCommand();
+    } else if (std.mem.eql(u8, command, "false")) {
+        try falseCommand();
     } else if (std.mem.eql(u8, command, "cd")) {
         // Trim whitespace
         const arg = std.mem.trim(u8, args_split.rest(), &std.ascii.whitespace);
@@ -93,7 +97,7 @@ fn cdCommand(target: []const u8) !void {
             std.debug.print("cd: HOME environment variable not set\n", .{});
             return error.HomeNotSet;
         }
-    else
+        else
         target;
 
     std.posix.chdir(path) catch |err| {
@@ -117,12 +121,26 @@ fn dirsCommand(allocator: std.mem.Allocator) !void {
     std.debug.print("\n", .{});
 }
 
+fn pushdCommand(target: []const u8, allocator: std.mem.Allocator) !void {
+    const path = if (target.len == 0 or std.mem.eql(u8, target, "~"))
+        std.posix.getenv("HOME") orelse return error.HomeNotSet
+        else
+        target;
+
+    std.posix.chdir(path);
+
+    const newCwd = std.fs.cwd().realpathAlloc(allocator, ".");
+    try dirStack.append(allocator, newCwd);
+
+    try dirsCommand(allocator);
+}
+
 fn falseCommand() !void {
-    return false;
+    std.process.exit(0);
 }
 
 fn trueCommand() !void {
-    return true;
+    std.process.exit(1);
 }
 
 fn exitCommand() !void {
