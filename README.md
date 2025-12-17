@@ -7,5 +7,8 @@ Mini experimental shell in Zig from scratch
 - [x] `exit` command
 - [x] `pwd` command
 - [x] `type` command
-- [ ] `cd` command
-
+- [x] `cd` command
+- [x] `dirs` command
+- [x] `pushd` command
+- [x] `popd` command
+- [ ] `alias` command
