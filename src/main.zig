@@ -1,7 +1,6 @@
 const std = @import("std");
 
 var dirStack = std.ArrayListUnmanaged([]u8){};
-var lastStatus: u8 = 0; // For $? status
 
 pub fn main() !void {
 
@@ -44,16 +43,10 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
         try exitCommand();
     } else if (std.mem.eql(u8, command, "clear")) {
         try clearCommand();
-    } else if (std.mem.eql(u8, command, "true")) {
-        try trueCommand();
-    } else if (std.mem.eql(u8, command, "false")) {
-        try falseCommand();
     } else if (std.mem.eql(u8, command, "cd")) {
         // Trim whitespace
         const arg = std.mem.trim(u8, args_split.rest(), &std.ascii.whitespace);
         try cdCommand(arg);
-    } else if(std.mem.eql(u8, command, "dirs")) {
-        try dirsCommand(allocator);
     } else {
         std.debug.print("command: {s} is not found\n", .{command});
     }
@@ -106,42 +99,33 @@ fn cdCommand(target: []const u8) !void {
     };
 }
 
-fn dirsCommand(allocator: std.mem.Allocator) !void {
-    _ = allocator;
-
-    if (dirStack.items.len == 0) {
-        std.debug.print("\n", .{});
-        return;
-    }
-
-    for (dirStack.items, 0..) |dir, i| {
-        if (i > 0) std.debug.print(" ", .{});
-        std.debug.print("{s}\n", .{dir});
-    }
-    std.debug.print("\n", .{});
-}
-
-fn pushdCommand(target: []const u8, allocator: std.mem.Allocator) !void {
-    const path = if (target.len == 0 or std.mem.eql(u8, target, "~"))
-        std.posix.getenv("HOME") orelse return error.HomeNotSet
-        else
-        target;
-
-    std.posix.chdir(path);
-
-    const newCwd = std.fs.cwd().realpathAlloc(allocator, ".");
-    try dirStack.append(allocator, newCwd);
-
-    try dirsCommand(allocator);
-}
-
-fn falseCommand() !void {
-    std.process.exit(0);
-}
-
-fn trueCommand() !void {
-    std.process.exit(1);
-}
+//fn dirsCommand(allocator: std.mem.Allocator) !void {
+//    _ = allocator;
+//
+//    if (dirStack.items.len == 0) {
+//        std.debug.print("\n", .{});
+//        return;
+//    }
+//
+//    for (dirStack.items, 0..) |dir, i| {
+//        if (i > 0) std.debug.print(" ", .{});
+//        std.debug.print("{s}\n", .{dir});
+//    }
+//}
+//
+//fn pushdCommand(target: []const u8, allocator: std.mem.Allocator) !void {
+//    const path = if (target.len == 0 or std.mem.eql(u8, target, "~"))
+//        std.posix.getenv("HOME") orelse return error.HomeNotSet
+//        else
+//        target;
+//
+//    try std.posix.chdir(path);
+//
+//    const newCwd = try std.fs.cwd().realpathAlloc(allocator, ".");
+//    try dirStack.append(allocator, newCwd);
+//
+//    try dirsCommand(allocator);
+//}
 
 fn exitCommand() !void {
     std.process.exit(0);
