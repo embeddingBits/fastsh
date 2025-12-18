@@ -18,7 +18,16 @@ pub fn main() !void {
         var reader = std.fs.File.stdin().reader(&read_buffer);
         const stdin = &reader.interface;
 
-        std.debug.print("$ ", .{});
+        // Username and Hostname
+        const user = std.posix.getenv("USER");
+        var hostname_buf: [64]u8 = undefined;
+        const hostname = try std.posix.gethostname(&hostname_buf);
+
+        // Directory Display
+        const cwdPath = try std.fs.cwd().realpathAlloc(allocator, ".");
+        const dirName = std.fs.path.basename(cwdPath);
+
+        std.debug.print("[{?s}@{s} {s}]$ ", .{user, hostname, dirName});
 
         const input = try stdin.takeDelimiterExclusive('\n');
 
