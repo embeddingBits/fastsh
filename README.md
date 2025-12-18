@@ -10,7 +10,7 @@ A rough implementation of a usable shell and then I'll move on to refractoring a
 - [x] `pwd` command
 - [x] `type` command
 - [x] `cd` command
-- [x] `dirs` command
-- [x] `pushd` command
-- [x] `popd` command
 - [ ] `alias` command
+- [] `dirs` command
+- [] `pushd` command
+- [] `popd` command

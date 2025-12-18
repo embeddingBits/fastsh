@@ -48,7 +48,24 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
         const arg = std.mem.trim(u8, args_split.rest(), &std.ascii.whitespace);
         try cdCommand(arg);
     } else {
-        std.debug.print("command: {s} is not found\n", .{command});
+        var argv_list = std.ArrayListUnmanaged([]const u8){};
+        defer argv_list.deinit(allocator);
+
+        var it = std.mem.splitSequence(u8, input, " ");
+        while (it.next()) |part| {
+            try argv_list.append(allocator, part);
+        }
+
+        const argv = try argv_list.toOwnedSlice(allocator);
+        defer allocator.free(argv);
+
+        executeCommand(allocator, argv) catch |err| {
+            switch (err) {
+                error.FileNotFound => {}, // already handled inside
+                error.AccessDenied => {},
+                else => std.debug.print("exec error: {s}\n", .{@errorName(err)}),
+            }
+        };
     }
 }
 
@@ -97,6 +114,54 @@ fn cdCommand(target: []const u8) !void {
         std.debug.print("cd: {s}: No such file or directory\n", .{path});
         return err;
     };
+}
+
+fn executeCommand(allocator: std.mem.Allocator, argv: []const []const u8) !void {
+    if (argv.len == 0) {
+        std.debug.print("exec: no command\n", .{});
+        return;
+    }
+
+    const cmd = argv[0];
+
+    // Direct path if it contains '/'
+    if (std.mem.indexOfScalar(u8, cmd, '/')) |_| {
+        try spawnAndWait(allocator, argv);
+        return;
+    }
+
+    // Search in PATH
+    const path = std.posix.getenv("PATH") orelse "/bin:/usr/bin:/usr/local/bin";
+    var dirs = std.mem.splitScalar(u8, path, ':');
+
+    while (dirs.next()) |dir| {
+        const full_path = std.fs.path.join(allocator, &.{dir, cmd}) catch continue;
+        defer allocator.free(full_path);
+
+        if (spawnAndWait(allocator, argv)) {
+            return;
+        } else |err| switch (err) {
+            error.FileNotFound => continue,
+            error.AccessDenied => {
+                std.debug.print("{s}: permission denied\n", .{cmd});
+                return;
+            },
+            else => continue,
+        }
+    }
+
+    std.debug.print("{s}: command not found\n", .{cmd});
+}
+
+fn spawnAndWait(allocator: std.mem.Allocator, argv: []const []const u8) !void {
+
+    var child = std.process.Child.init(argv, allocator);
+    child.stdin_behavior = .Ignore;
+    child.stdout_behavior = .Inherit;
+    child.stderr_behavior = .Inherit;
+
+    try child.spawn();
+    _ = try child.wait();
 }
 
 //fn dirsCommand(allocator: std.mem.Allocator) !void {
