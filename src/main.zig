@@ -1,6 +1,7 @@
 const std = @import("std");
 
 var dirStack = std.ArrayListUnmanaged([]u8){};
+const cmd_list = [_][]const u8{"exit", "cd", "pwd", "type", "echo", "builtin", "clear", "dirs", "pushd", "popd"};
 
 pub fn main() !void {
 
@@ -56,6 +57,8 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
         // Trim whitespace
         const arg = std.mem.trim(u8, args_split.rest(), &std.ascii.whitespace);
         try cdCommand(arg);
+    } else if (std.mem.eql(u8, command, "builtin")) {
+        try builtinCommand();
     } else {
         var argv_list = std.ArrayListUnmanaged([]const u8){};
         defer argv_list.deinit(allocator);
@@ -90,8 +93,7 @@ fn echoCommand(input: []const u8) !void {
 fn typeCommand(input: []const u8) !void {
     var args_split = std.mem.splitSequence(u8, input, " ");
 
-    const cmd = [_][]const u8{"exit", "cd", "pwd", "type", "echo"};
-    for (cmd) |builtin| {
+    for (cmd_list) |builtin| {
         if (std.mem.eql(u8, args_split.next(), builtin)) {
             std.debug.print("{s} is a builtin\n", .{builtin});
         }
@@ -103,6 +105,12 @@ fn pwdCommand(allocator: std.mem.Allocator) !void {
     defer allocator.free(current_directory);
 
     std.debug.print("{s}\n", .{current_directory});
+}
+
+fn builtinCommand() !void {
+    for (cmd_list) |commands| {
+        std.debug.print("{s}\n", .{commands});
+    }
 }
 
 fn clearCommand() !void {
