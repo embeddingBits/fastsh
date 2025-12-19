@@ -11,6 +11,6 @@ A rough implementation of a usable shell and then I'll move on to refractoring a
 - [x] `type` command
 - [x] `cd` command
 - [ ] `alias` command
-- [] `dirs` command
-- [] `pushd` command
-- [] `popd` command
+- [ ] `dirs` command
+- [ ] `pushd` command
+- [ ] `popd` command
