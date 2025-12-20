@@ -53,6 +53,10 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
         try exitCommand();
     } else if (std.mem.eql(u8, command, "clear")) {
         try clearCommand();
+    } else if (std.mem.eql(u8, command, "true")) {
+        trueCommand();
+    } else if (std.mem.eql(u8, command, "false")) {
+        falseCommand();
     } else if (std.mem.eql(u8, command, "cd")) {
         // Trim whitespace
         const arg = std.mem.trim(u8, args_split.rest(), &std.ascii.whitespace);
@@ -179,6 +183,14 @@ fn spawnAndWait(allocator: std.mem.Allocator, argv: []const []const u8) !void {
 
     try child.spawn();
     _ = try child.wait();
+}
+
+fn trueCommand() bool {
+    return true;
+}
+
+fn falseCommand() bool {
+    return false;
 }
 
 //fn dirsCommand(allocator: std.mem.Allocator) !void {
