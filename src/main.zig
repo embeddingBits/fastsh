@@ -1,4 +1,9 @@
 const std = @import("std");
+const readline = @cImport({
+    @cInclude("stdio.h");
+    @cInclude("stdlib.h");
+    @cInclude("readline/readline.h");
+});
 
 const cmd_list = [_][]const u8{
     "exit", "cd", "pwd", "type", "echo",
