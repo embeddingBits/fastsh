@@ -22,8 +22,8 @@ pub fn main() !void {
         defer arena.deinit();
         const allocator = arena.allocator();
 
-        const prompt = "$ ";
-        const line = readline.readline(prompt);
+        const prompt = displayPrompt(allocator) catch "$ ";
+        const line = readline.readline(prompt.ptr);
         defer readline.free(line);
 
         if (line == null) {
@@ -39,7 +39,7 @@ pub fn main() !void {
     }
 }
 
-fn displayPrompt(allocator: std.mem.Allocator) !void {
+fn displayPrompt(allocator: std.mem.Allocator) ![:0]const u8 {
 
     // To display prompt
     const user = std.posix.getenv("USER") orelse "user";
@@ -50,7 +50,7 @@ fn displayPrompt(allocator: std.mem.Allocator) !void {
     const dir_name = std.fs.path.basename(cwd_path);
 
 
-    std.debug.print("[{s}@{s} {s}]$ ", .{ user, hostname, dir_name });
+    return std.fmt.allocPrintSentinel(allocator, "[{s}@{s} {s}]$ ", .{ user, hostname, dir_name }, 0);
 }
 
 fn parseCommand(input: []const u8, allocator: std.mem.Allocator) !ParsedCommand {
