@@ -16,9 +16,10 @@ A rough implementation of a usable shell and then I'll move on to refractoring a
 - [ ] `popd` command
 
 ## Features to be implemented
+- [x] Arrow Completion
 - [ ] History
 - [ ] History Navigation
-- [ ] Tab Completion
+- [x] Tab Completion
 - [ ] Configuration File
 - [ ] Conditional Statements
 - [ ] Job control `bg`, `fg`, `jobs`

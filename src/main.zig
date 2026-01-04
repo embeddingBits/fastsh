@@ -8,7 +8,7 @@ const readline = @cImport({
 
 const cmd_list = [_][]const u8{
     "exit", "cd", "pwd", "type", "echo",
-    "builtin", "clear", "dirs", "pushd", "popd",
+    "builtin", "clear", 
 };
 
 const ParsedCommand = struct {
@@ -205,31 +205,3 @@ fn spawnAndWait(allocator: std.mem.Allocator, argv: []const []const u8) !void {
 fn exitCommand() noreturn {
     std.process.exit(0);
 }
-
-//fn dirsCommand(allocator: std.mem.Allocator) !void {
-//    _ = allocator;
-//
-//    if (dirStack.items.len == 0) {
-//        std.debug.print("\n", .{});
-//        return;
-//    }
-//
-//    for (dirStack.items, 0..) |dir, i| {
-//        if (i > 0) std.debug.print(" ", .{});
-//        std.debug.print("{s}\n", .{dir});
-//    }
-//}
-//
-//fn pushdCommand(target: []const u8, allocator: std.mem.Allocator) !void {
-//    const path = if (target.len == 0 or std.mem.eql(u8, target, "~"))
-//        std.posix.getenv("HOME") orelse return error.HomeNotSet
-//        else
-//        target;
-//
-//    try std.posix.chdir(path);
-//
-//    const newCwd = try std.fs.cwd().realpathAlloc(allocator, ".");
-//    try dirStack.append(allocator, newCwd);
-//
-//    try dirsCommand(allocator);
-//}
