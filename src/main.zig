@@ -3,6 +3,7 @@ const readline = @cImport({
     @cInclude("stdio.h");
     @cInclude("stdlib.h");
     @cInclude("readline/readline.h");
+    @cInclude("readline/history.h");
 });
 
 const cmd_list = [_][]const u8{
@@ -21,31 +22,35 @@ pub fn main() !void {
         defer arena.deinit();
         const allocator = arena.allocator();
 
-        // Input reader
-        var read_buffer: [1024]u8 = undefined;
-        var reader = std.fs.File.stdin().reader(&read_buffer);
-        const stdin = &reader.interface;
+        const prompt = displayPrompt(allocator) catch "$ ";
+        const line = readline.readline(prompt.ptr);
+        defer readline.free(line);
 
-        try displayPrompt(allocator);
+        if (line == null) {
+            std.posix.exit(0);
+        }
 
-        const input = stdin.takeDelimiterExclusive('\n') catch continue;
+        const input = std.mem.span(line);
+
         if (input.len == 0) continue;
+        readline.add_history(line);
 
         try handleCommand(input, allocator);
     }
 }
 
-fn displayPrompt(allocator: std.mem.Allocator) !void {
+fn displayPrompt(allocator: std.mem.Allocator) ![:0]const u8 {
 
-        // To display prompt
-        const user = std.posix.getenv("USER") orelse "user";
-        var hostname_buf: [64]u8 = undefined;
-        const hostname = try std.posix.gethostname(&hostname_buf);
+    // To display prompt
+    const user = std.posix.getenv("USER") orelse "user";
+    var hostname_buf: [64]u8 = undefined;
+    const hostname = try std.posix.gethostname(&hostname_buf);
 
-        const cwd_path = try std.fs.cwd().realpathAlloc(allocator, ".");
-        const dir_name = std.fs.path.basename(cwd_path);
+    const cwd_path = try std.fs.cwd().realpathAlloc(allocator, ".");
+    const dir_name = std.fs.path.basename(cwd_path);
 
-        std.debug.print("[{s}@{s} {s}]$ ", .{ user, hostname, dir_name });
+
+    return std.fmt.allocPrintSentinel(allocator, "[{s}@{s} {s}]$ ", .{ user, hostname, dir_name }, 0);
 }
 
 fn parseCommand(input: []const u8, allocator: std.mem.Allocator) !ParsedCommand {
@@ -60,7 +65,7 @@ fn parseCommand(input: []const u8, allocator: std.mem.Allocator) !ParsedCommand 
     }
 
     if (argvList.items.len == 0)
-        return error.EmptyCommand;
+    return error.EmptyCommand;
 
     const argv = try argvList.toOwnedSlice(allocator);
 
@@ -130,13 +135,13 @@ fn clearCommand() void {
 
 fn cdCommand(target: []const u8) !void {
     const path =
-        if (target.len == 0 or std.mem.eql(u8, target, "~"))
-            std.posix.getenv("HOME") orelse {
-                std.debug.print("cd: HOME not set\n", .{});
-                return error.HomeNotSet;
-            }
+    if (target.len == 0 or std.mem.eql(u8, target, "~"))
+        std.posix.getenv("HOME") orelse {
+            std.debug.print("cd: HOME not set\n", .{});
+            return error.HomeNotSet;
+        }
         else
-            target;
+        target;
 
     std.posix.chdir(path) catch {
         std.debug.print("cd: {s}: No such directory\n", .{path});
