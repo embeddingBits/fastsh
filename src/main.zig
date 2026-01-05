@@ -6,6 +6,8 @@ const readline = @cImport({
     @cInclude("readline/history.h");
 });
 
+const shellErr = error{ExitShell};
+
 const cmd_list = [_][]const u8{
     "exit", "cd", "pwd", "type", "echo",
     "builtin", "clear", 
@@ -17,42 +19,51 @@ const ParsedCommand = struct {
 };
 
 pub fn main() !void {
+    // Global allocator
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const gpa_allocator = gpa.allocator();
+
+    const historyPath = try getHistoryFile(gpa_allocator);
+    defer gpa_allocator.free(historyPath);
+
+    if (historyPath.len > 0) {
+        _ = readline.read_history(historyPath.ptr);
+    }
+
     while (true) {
+        // Allocator for prompts and commands
         var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arena.deinit();
         const allocator = arena.allocator();
 
         const prompt = displayPrompt(allocator) catch "$ ";
+
         const line = readline.readline(prompt.ptr);
-        defer readline.free(line);
 
         if (line == null) {
-            std.posix.exit(0);
+            break;
         }
+        defer readline.free(line);
 
         const input = std.mem.span(line);
-
         if (input.len == 0) continue;
+
         readline.add_history(line);
 
-        try handleCommand(input, allocator);
+        handleCommand(input, allocator) catch |err| {
+            if (err == shellErr.ExitShell) {
+                break;
+            }
+        };
+    }
+
+    if (historyPath.len > 0) {
+        _ = readline.write_history(historyPath.ptr);
     }
 }
 
-fn displayPrompt(allocator: std.mem.Allocator) ![:0]const u8 {
-
-    // To display prompt
-    const user = std.posix.getenv("USER") orelse "user";
-    var hostname_buf: [64]u8 = undefined;
-    const hostname = try std.posix.gethostname(&hostname_buf);
-
-    const cwd_path = try std.fs.cwd().realpathAlloc(allocator, ".");
-    const dir_name = std.fs.path.basename(cwd_path);
-
-
-    return std.fmt.allocPrintSentinel(allocator, "[{s}@{s} {s}]$ ", .{ user, hostname, dir_name }, 0);
-}
-
+// Parser Logic
 fn parseCommand(input: []const u8, allocator: std.mem.Allocator) !ParsedCommand {
     var parts = std.mem.splitSequence(u8, input, " ");
 
@@ -85,7 +96,7 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
     const cmd = parsed.command;
 
     if (std.mem.eql(u8, cmd, "exit")) {
-        exitCommand();
+        return shellErr.ExitShell;
     } else if (std.mem.eql(u8, cmd, "echo")) {
         echoCommand(parsed.argv);
     } else if (std.mem.eql(u8, cmd, "pwd")) {
@@ -110,6 +121,7 @@ fn handleCommand(input: []const u8, allocator: std.mem.Allocator) !void {
     }
 }
 
+// Commands
 fn echoCommand(argv: []const []const u8) void {
     if (argv.len <= 1) {
         std.debug.print("\n", .{});
@@ -202,6 +214,27 @@ fn spawnAndWait(allocator: std.mem.Allocator, argv: []const []const u8) !void {
     _ = try child.wait();
 }
 
-fn exitCommand() noreturn {
-    std.process.exit(0);
+// Helpers
+fn displayPrompt(allocator: std.mem.Allocator) ![:0]const u8 {
+
+    // To display prompt
+    const user = std.posix.getenv("USER") orelse "user";
+    var hostname_buf: [64]u8 = undefined;
+    const hostname = try std.posix.gethostname(&hostname_buf);
+
+    const cwd_path = try std.fs.cwd().realpathAlloc(allocator, ".");
+    const dir_name = std.fs.path.basename(cwd_path);
+
+
+    return std.fmt.allocPrintSentinel(allocator, "[\x1b[33m{s}\x1b[0m\x1b[31m@\x1b[0m\x1b[92m{s}\x1b[0m \x1b[34m{s}\x1b[0m]$ ", .{ user, hostname, dir_name }, 0);
+}
+
+fn getHistoryFile(allocator: std.mem.Allocator) ![:0]const u8 {
+    const home = std.posix.getenv("HOME") orelse ".";
+
+    const raw_path = try std.fs.path.join(allocator, &[_][]const u8{ home, ".fastsh_history" });
+    
+    defer allocator.free(raw_path);
+
+    return try allocator.dupeZ(u8, raw_path);
 }
