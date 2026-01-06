@@ -5,6 +5,9 @@ const readline = @cImport({
     @cInclude("readline/readline.h");
     @cInclude("readline/history.h");
 });
+const glob = @cImport({
+    @cInclude("glob.h");
+});
 
 const shellErr = error{ExitShell};
 
@@ -63,16 +66,43 @@ pub fn main() !void {
     }
 }
 
+fn expandArgs(allocator: std.mem.Allocator, arg: []const u8, argsList: *std.ArrayList([]const u8)) !void {
+    if (hasWildcard(arg)) {
+        try argsList.append(allocator, arg);
+        return;
+    }
+
+    var glob_result: glob.glob_t = undefined;
+
+    const pattern = try allocator.dupeZ(u8, arg);
+
+    const flags = glob.GLOB_NOCHECK | glob.GLOB_TILDE;
+
+    if (glob.glob(pattern.ptr, flags, null, &glob_result) == 0) {
+        defer glob.globfree(&glob_result);
+
+        var i: usize = 0;
+        while(i < glob_result.gl_pathc) : (i += 1) {
+            const cString = glob_result.gl_pathv[i];
+            const  zigSlice = std.mem.span(cString);
+            const entry = try allocator.dupeZ(u8, zigSlice);
+            try argsList.append(allocator, entry);
+        }
+    } else {
+        std.debug.print("DEBUG: glob failed or no match for '{s}'\n", .{arg});
+        try argsList.append(allocator, arg);
+    }
+}
+
 // Parser Logic
 fn parseCommand(input: []const u8, allocator: std.mem.Allocator) !ParsedCommand {
-    var parts = std.mem.splitSequence(u8, input, " ");
+    var parts = std.mem.tokenizeAny(u8, input, " \t\r\n");
 
     var argvList = std.ArrayListUnmanaged([]const u8){};
     errdefer argvList.deinit(allocator);
 
     while (parts.next()) |part| {
-        if (part.len == 0) continue;
-        try argvList.append(allocator, part);
+        try expandArgs(allocator, part, &argvList);
     }
 
     if (argvList.items.len == 0)
@@ -237,4 +267,11 @@ fn getHistoryFile(allocator: std.mem.Allocator) ![:0]const u8 {
     defer allocator.free(raw_path);
 
     return try allocator.dupeZ(u8, raw_path);
+}
+
+fn hasWildcard(s: []const u8) bool {
+    for (s) |char| {
+        if (char == '*' or char == '?' or char == ']') return true;
+    }
+    return false;
 }
