@@ -4,6 +4,8 @@
 #include "prompt.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
 #include <string.h>
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -16,11 +18,24 @@ static char *get_history_path(void) {
     return path;
 }
 
+void sigint_handler(int sig)
+{
+      (void)sig;
+
+      write(STDOUT_FILENO, "\n", 1);
+
+      rl_on_new_line();
+      rl_replace_line("", 0);
+      rl_redisplay();
+}
+
 int main(void) {
     char *history_path = get_history_path();
     if (history_path) {
         read_history(history_path);
     }
+
+    signal(SIGINT, sigint_handler);
 
     while (1) {
         char *prompt = get_prompt();
@@ -63,3 +78,4 @@ int main(void) {
 
     return 0;
 }
+
